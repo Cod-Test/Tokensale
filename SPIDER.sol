@@ -416,7 +416,7 @@ contract ERC20 is IERC20 {
  * Note they can later distribute these tokens as they wish using `transfer` and other
  * `ERC20` functions.
  */
-contract SPIDER is ERC20 {
+contract MOONSHOT is ERC20 {
 
     string public name;
     string public symbol;
@@ -429,11 +429,11 @@ contract SPIDER is ERC20 {
      * construction.
      */
     constructor () public {
-        name = "SPIDER";
-        symbol = "SPD";
+        name = "MOONSHOT";
+        symbol = "MST";
         decimals = 18;
         owner = msg.sender;
-        _mint(msg.sender, 10000000000000000000000000000000);
+        _mint(msg.sender, 1000000000000000000000000000000);
     }
 
     function mint(address account, uint256 amount) public {
