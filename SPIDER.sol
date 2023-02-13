@@ -416,7 +416,7 @@ contract ERC20 is IERC20 {
  * Note they can later distribute these tokens as they wish using `transfer` and other
  * `ERC20` functions.
  */
-contract Token is ERC20 {
+contract SPIDER is ERC20 {
 
     string public name;
     string public symbol;
