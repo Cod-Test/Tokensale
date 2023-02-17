@@ -343,24 +343,16 @@ contract Ownable is Context {
 }
 
 
-contract STEADY is Context, IBEP20, Ownable {
+contract EMPEROR is Context, IBEP20, Ownable {
     using SafeMath for uint256;
 
     mapping (address => uint256) private _balances;
 
-    mapping (address => bool) public _isStaker;
-
-    mapping (address => uint) public _stakeTime;
-
     mapping (address => mapping (address => uint256)) private _allowances;
 
-
     uint256 private _totalSupply;
-    uint256 public _totalUnstakeTime;
-    uint256 public _stakeReward;
     uint256 public _stakeCost;
-    uint256 public _stakers;
-    uint256 public _stakes;
+    uint256 public Stakers;
     uint8 public _decimals;
     string public _symbol;
     string public _name;
@@ -368,11 +360,10 @@ contract STEADY is Context, IBEP20, Ownable {
 
     constructor() public {
         _genesisMint = "10 million tokens";
-        _name = "STEADY";
-        _symbol = "STEADY";
+        _name = "EMPEROR";
+        _symbol = "EMPEROR";
         _decimals = 18;
         _totalSupply = 10000000000000000000000000;
-        _stakeReward = 100000000000000000000;
         _stakeCost = 2000000000000000000000;
         _balances[msg.sender] = _totalSupply;
 
@@ -508,33 +499,6 @@ contract STEADY is Context, IBEP20, Ownable {
     }
 
     /**
-     * @dev Withdraws stake deposit and mints new tokens, increasing
-     * the total supply.
-     *
-     * Requirements
-     *
-     * - `msg.sender` must be a staker.
-     */
-    function unstake(address _to) public returns (bool) {
-        require(_isStaker[msg.sender] == true, "Caller not a staker");
-        require(now >= (_stakeTime[msg.sender] + 28 days));
-        _isStaker[msg.sender] = false;
-        _stakers--;
-        _stakes.sub(2000);
-        
-        if (_totalUnstakeTime == 10000) {
-            _stakeReward = _stakeReward.div(2);
-            _totalUnstakeTime = 1;
-        } else {
-                _totalUnstakeTime++;
-        }
-
-        _mint(_to, _stakeReward);
-        _transfer(address(this), _to, _stakeCost);
-        return true;
-    }
-
-    /**
      * @dev Burn `amount` tokens and decreasing the total supply.
      */
     function burn(uint256 amount) public returns (bool) {
@@ -556,18 +520,113 @@ contract STEADY is Context, IBEP20, Ownable {
         return 'Oge Ifeluo';
     }
 
-    /**
-     * @dev deposits 2000 emperor tokens for staking.
-     * The deposit will be locked for a period of 28 days or 2,419,200 seconds
-     * and can only be withdrawn with the same deposit address.
-     */
+    // Staker info
+    struct Staker {
+        // Amount of tokens staked by the staker
+        uint256 amountStaked;
+
+        // Last time of the rewards were calculated for this user
+        uint256 timeOfLastUpdate;
+
+        // Calculated, but unclaimed rewards for the User. The rewards are
+        // calculated each time the user writes to the Smart Contract
+        uint256 unclaimedRewards;
+    }
+
+    // Rewards per hour per token deposited in wei.
+    uint256 private rewardsPerHour = 30000000000000000;
+
+    // Mapping of User Address to Staker info
+    mapping(address => Staker) public stakers;
+
+    // If address already has ERC721 Token/s staked, calculate the rewards.
+    // Increment the amountStaked and map msg.sender to the Token Id of the staked
+    // Token to later send back on withdrawal. Finally give timeOfLastUpdate the
+    // value of now.
     function stake() public {
-        require(_isStaker[msg.sender] == false, "Caller already staked");
-        _isStaker[msg.sender] = true;
-        _stakeTime[msg.sender] = now;
+        // If wallet has tokens staked, calculate the rewards before adding the new token
+        if (stakers[msg.sender].amountStaked > 0) {
+            uint256 rewards = calculateRewards(msg.sender);
+            stakers[msg.sender].unclaimedRewards += rewards;
+        }
+
+        Stakers++;
+
+        // Transfer the token from the wallet to the Smart contract
         _transfer(msg.sender, address(this), _stakeCost);
-        _stakers++;
-        _stakes.add(2000);
+
+        // Increment the amount staked for this wallet
+        stakers[msg.sender].amountStaked++;
+
+        // Update the timeOfLastUpdate for the staker   
+        stakers[msg.sender].timeOfLastUpdate = block.timestamp;
+    }
+    
+    // Check if user has any ERC721 Tokens Staked and if they tried to withdraw,
+    // calculate the rewards and store them in the unclaimedRewards
+    // decrement the amountStaked of the user and transfer the ERC721 token back to them
+    function withdraw() public {
+        // Make sure the user has at least one token staked before withdrawing
+        require(
+            stakers[msg.sender].amountStaked > 0,
+            "You have no tokens staked"
+        );
+        
+        // Update the rewards for this user, as the amount of rewards decreases with less tokens.
+        uint256 rewards = calculateRewards(msg.sender);
+        stakers[msg.sender].unclaimedRewards += rewards;
+
+        Stakers--;
+
+        // Decrement the amount staked for this wallet
+        stakers[msg.sender].amountStaked--;
+
+        // Transfer the token back to the withdrawer
+        _transfer(address(this), msg.sender, _stakeCost);
+
+        // Update the timeOfLastUpdate for the withdrawer   
+        stakers[msg.sender].timeOfLastUpdate = block.timestamp;
+    }
+
+    // Calculate rewards for the msg.sender, check if there are any rewards
+    // claim, set unclaimedRewards to 0 and transfer the ERC20 Reward token
+    // to the user.
+    function claimRewards() public {
+        uint256 rewards = calculateRewards(msg.sender) +
+            stakers[msg.sender].unclaimedRewards;
+        require(rewards > 0, "You have no rewards to claim");
+        stakers[msg.sender].timeOfLastUpdate = block.timestamp;
+        stakers[msg.sender].unclaimedRewards = 0;
+        _mint(msg.sender, rewards);
+    }
+
+
+    //////////
+    // View //
+    //////////
+
+    function availableRewards(address _staker) public view returns (uint256) {
+        uint256 rewards = calculateRewards(_staker) +
+            stakers[_staker].unclaimedRewards;
+        return rewards;
+    }   
+
+    /////////////
+    // Internal//
+    /////////////
+
+    // Calculate rewards for param _staker by calculating the time passed
+    // since last update in hours and mulitplying it to ERC721 Tokens Staked
+    // and rewardsPerHour.
+    function calculateRewards(address _staker)
+        internal
+        view
+        returns (uint256 _rewards)
+    {
+        return (((
+            ((block.timestamp - stakers[_staker].timeOfLastUpdate) *
+                stakers[_staker].amountStaked)
+        ) * rewardsPerHour) / 3600);
     }
 
     /**
