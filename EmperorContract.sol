@@ -534,7 +534,7 @@ contract EMPEROR is Context, IBEP20, Ownable {
     }
 
     // Rewards per hour per token deposited in wei.
-    uint256 private rewardsPerHour = 30000000000000000;
+    uint256 private rewardsPerHour = 800000000000000000; // 0.8 token per hour
 
     // Mapping of User Address to Staker info
     mapping(address => Staker) public stakers;
