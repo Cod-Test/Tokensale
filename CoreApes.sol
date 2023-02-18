@@ -343,7 +343,7 @@ contract Ownable is Context {
 }
 
 
-contract EMPEROR is Context, IBEP20, Ownable {
+contract COREAPES is Context, IBEP20, Ownable {
     using SafeMath for uint256;
 
     mapping (address => uint256) private _balances;
@@ -360,8 +360,8 @@ contract EMPEROR is Context, IBEP20, Ownable {
 
     constructor() public {
         _genesisMint = "10 million tokens";
-        _name = "EMPEROR";
-        _symbol = "EMPEROR";
+        _name = "COREAPES";
+        _symbol = "CAPE";
         _decimals = 18;
         _totalSupply = 10000000000000000000000000;
         _stakeCost = 10000000000000000000000;
