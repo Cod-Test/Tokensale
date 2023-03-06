@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-contract AKT {
+contract BOOST {
     mapping(address => uint) public balances;
     mapping(address => mapping(address => uint)) public allowance;
     uint public totalSupply = 3000 * 10 ** 18;
-    string public name = "AKITA";
-    string public symbol = "AKT";
+    string public name = "BOOST";
+    string public symbol = "BST";
     uint public decimals = 18;
     
     event Transfer(address indexed from, address indexed to, uint value);
